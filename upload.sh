@@ -1,34 +1,29 @@
 #!/bin/bash
+# 🚀 Safe GitHub Auto Uploader (No Token Needed)
+# Make sure you're logged in using: gh auth login
 
-# 🚀 Grey Market App - GitHub Auto Upload Script
+echo ""
+echo "🚀 Starting secure upload to GitHub..."
 
-# 🧠 यहां अपना GitHub Token डालो (मुझे मत बताना!)
-GITHUB_TOKEN=" "
+# Stop on error
+set -e
 
-# 🏷️ Repository का नाम
-REPO_URL="https://$GITHUB_TOKEN@github.com/singrao468-ops/GreyG-_GMP.git"
-
-echo "🚀 Starting upload to GitHub..."
-
-cd ~/grey_trading || exit
+# Check login
+if ! gh auth status > /dev/null 2>&1; then
+    echo "❌ You are not logged in to GitHub CLI. Run: gh auth login"
+    exit 1
+fi
 
 # Git setup
-git init >/dev/null 2>&1
+cd "$(dirname "$0")" || exit
 git add .
-git commit -m "Auto update - $(date)" >/dev/null 2>&1
+git commit -m "Auto update - $(date +"%a %b %d %H:%M:%S %Z %Y")" || echo "🟡 No new changes to commit"
 
-# Remote सेट करो (पुराना हटाओ)
-git remote remove origin >/dev/null 2>&1
-git remote add origin "$REPO_URL"
-
-git branch -M main
-
+# Push changes
 echo "📤 Pushing to remote repository..."
-git push -u origin main
-
-if [ $? -eq 0 ]; then
-    echo "✅ Upload successful!"
+if git push; then
+    echo "✅ Upload complete!"
 else
-    echo "❌ Upload failed. Check your GitHub token or repo name."
+    echo "❌ Upload failed. Please check your internet or permissions."
 fi
 
