@@ -1,29 +1,33 @@
 #!/bin/bash
-# 🚀 Safe GitHub Auto Uploader (No Token Needed)
-# Make sure you're logged in using: gh auth login
 
-echo ""
-echo "🚀 Starting secure upload to GitHub..."
+echo "🚀 Starting smart upload to GitHub..."
 
-# Stop on error
-set -e
+cd ~/grey_trading || exit 1
 
-# Check login
-if ! gh auth status > /dev/null 2>&1; then
-    echo "❌ You are not logged in to GitHub CLI. Run: gh auth login"
-    exit 1
+# Add all changes
+git add .
+
+# Find changed files for better commit message
+CHANGED_FILES=$(git diff --cached --name-only)
+
+if [ -z "$CHANGED_FILES" ]; then
+  echo "⚡ No new changes to commit."
+  exit 0
 fi
 
-# Git setup
-cd "$(dirname "$0")" || exit
-git add .
-git commit -m "Auto update - $(date +"%a %b %d %H:%M:%S %Z %Y")" || echo "🟡 No new changes to commit"
+# Create readable commit message
+COMMIT_MESSAGE="Auto update - $(date '+%a %b %d %H:%M:%S %Z %Y') | Changed: $CHANGED_FILES"
+
+# Commit changes
+git commit -m "$COMMIT_MESSAGE"
 
 # Push changes
 echo "📤 Pushing to remote repository..."
-if git push; then
-    echo "✅ Upload complete!"
+git push -u origin main
+
+if [ $? -eq 0 ]; then
+  echo "✅ Upload complete!"
 else
-    echo "❌ Upload failed. Please check your internet or permissions."
+  echo "❌ Upload failed. Check your GitHub connection."
 fi
 
