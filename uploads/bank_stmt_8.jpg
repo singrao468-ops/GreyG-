@@ -1,0 +1,550 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Paper Trading Demo (Single File)</title>
+<style>
+  body{font-family:Inter,Segoe UI,Arial; margin:12px; background:#f6f8fb; color:#111}
+  h1{font-size:20px;margin:0 0 8px}
+  .grid{display:grid; grid-template-columns: 320px 1fr 320px; gap:12px}
+  .card{background:#fff;border-radius:8px;padding:12px;box-shadow:0 6px 18px rgba(20,30,60,0.06)}
+  label{display:block;font-size:12px;margin-top:8px}
+  input, select, button{padding:8px;border-radius:6px;border:1px solid #d6dce8;font-size:14px}
+  button{cursor:pointer}
+  .market-price{font-weight:700;font-size:24px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{padding:6px;border-bottom:1px solid #eee;text-align:left}
+  .small{font-size:12px;color:#666}
+  .green{color:#0a8a4a;font-weight:700}
+  .red{color:#c0392b;font-weight:700}
+  .muted{color:#667085}
+  .row{display:flex;gap:8px;align-items:center}
+  .full{width:100%}
+  .btn-approve{background:#0a8a4a;color:#fff;border:none}
+  .btn-primary{background:#2563eb;color:#fff;border:none}
+  .btn-danger{background:#ef4444;color:#fff;border:none}
+  .center{display:flex;justify-content:center;align-items:center}
+  .note{font-size:12px;color:#44506a;margin-top:6px}
+</style>
+</head>
+<body>
+  <h1>Paper Trading Demo â Notepad à¤¸à¥ à¤à¤²à¤¾à¤¨à¥ à¤¯à¥à¤à¥à¤¯</h1>
+  <div class="grid">
+    <!-- LEFT: Market + Order Entry -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div class="small">Instrument</div>
+          <select id="instrument">
+            <option value="RELI">RELI (Reliance) </option>
+            <option value="TCS">TCS</option>
+            <option value="INFY">INFY</option>
+          </select>
+        </div>
+        <div class="center" style="flex-direction:column; text-align:right">
+          <div class="small">Live Price</div>
+          <div id="price" class="market-price">â¹100.00</div>
+          <div id="spread" class="small muted">B: - A: -</div>
+        </div>
+      </div>
+
+      <hr style="margin:10px 0"/>
+
+      <div>
+        <div class="small">Order Type</div>
+        <div class="row" style="margin-top:6px">
+          <select id="orderType"><option value="MARKET">MARKET</option><option value="LIMIT">LIMIT</option></select>
+          <select id="side"><option value="BUY">BUY</option><option value="SELL">SELL</option></select>
+        </div>
+
+        <label>Quantity</label>
+        <input id="qty" type="number" value="1" min="1"/>
+
+        <label id="priceLabel">Price (for LIMIT)</label>
+        <input id="limitPrice" type="number" step="0.01" value="100"/>
+
+        <div style="margin-top:8px" class="row">
+          <button id="placeBtn" class="btn-primary">Place Order</button>
+          <button id="cancelAll" class="btn-danger">Cancel All Open</button>
+        </div>
+
+        <div class="note">Tip: MARKET order executes at current simulated last price. LIMIT order waits until market crosses price.</div>
+      </div>
+
+      <hr style="margin:10px 0"/>
+
+      <div>
+        <div class="small">Order Book (Top 5 simulated)</div>
+        <table id="orderBookTbl"><thead><tr><th>Side</th><th>Price</th><th>Qty</th></tr></thead><tbody></tbody></table>
+      </div>
+    </div>
+
+    <!-- CENTER: Orders / Trades / Positions -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div><strong>Your Orders</strong></div>
+        <div class="small muted">Auto-matching engine (client)</div>
+      </div>
+
+      <table id="ordersTbl" style="margin-top:8px">
+        <thead><tr><th>ID</th><th>Instr</th><th>Side</th><th>Qty</th><th>Price</th><th>Status</th></tr></thead>
+        <tbody></tbody>
+      </table>
+
+      <hr style="margin:10px 0"/>
+
+      <div style="display:flex;gap:12px">
+        <div style="flex:1">
+          <strong>Trades</strong>
+          <table id="tradesTbl"><thead><tr><th>Time</th><th>Instr</th><th>Side</th><th>Qty</th><th>Price</th></tr></thead><tbody></tbody></table>
+        </div>
+        <div style="flex:1">
+          <strong>Positions</strong>
+          <table id="posTbl"><thead><tr><th>Instr</th><th>Qty</th><th>Avg Price</th><th>Unreal P/L</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Wallet + Withdrawals (Admin approve) -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div><strong>Wallet (Virtual)</strong></div>
+        <div class="small muted">Local demo funds</div>
+      </div>
+      <div style="margin-top:8px">
+        <div class="small">Available: <span id="availableBal" class="green">â¹100,000.00</span></div>
+        <div class="small">On Hold: <span id="holdBal" class="muted">â¹0.00</span></div>
+        <div class="small">Net Equity: <span id="netBal" class="green">â¹100,000.00</span></div>
+      </div>
+
+      <hr style="margin:10px 0"/>
+
+      <div>
+        <button id="seedBtn">Seed â¹100,000</button>
+        <button id="resetBtn" style="margin-left:8px">Reset Demo</button>
+      </div>
+
+      <hr style="margin:10px 0"/>
+
+      <div>
+        <strong>Withdrawal (simulated)</strong>
+        <label>Amount</label>
+        <input id="withdrawAmt" type="number" value="1000"/>
+        <div style="margin-top:8px">
+          <button id="requestWithdraw">Request Withdraw</button>
+        </div>
+        <div class="note">Withdrawals are simulated â requires admin approve below.</div>
+      </div>
+
+      <hr style="margin:10px 0"/>
+
+      <div>
+        <strong>Admin Panel â Withdraw Approvals</strong>
+        <table id="withdrawTbl"><thead><tr><th>ID</th><th>Amt</th><th>Status</th><th>Action</th></tr></thead><tbody></tbody></table>
+      </div>
+    </div>
+  </div>
+
+<script>
+/*
+  Simple client-side paper trading simulator:
+  - Simulated price via random-walk per instrument
+  - Orders: MARKET executes immediately at lastPrice; LIMIT executes when lastPrice crosses price
+  - Wallet: available & hold
+  - Positions & P/L book-keeping
+  - Withdrawal requests + admin approve
+  NOTE: All data stored in localStorage so page reload persists demo state
+*/
+
+// --- Utilities
+const fmt = v => 'â¹' + Number(v).toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
+const now = () => new Date().toLocaleTimeString();
+
+// --- Instruments initial state
+const INSTRUMENTS = {
+  RELI: {symbol:'RELI', price: 2400},
+  TCS:  {symbol:'TCS', price: 3800},
+  INFY: {symbol:'INFY', price: 1800}
+};
+
+// --- persistent store (localStorage)
+const STORAGE_KEY = 'paper_trading_demo_v1';
+function loadState(){
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if(raw) return JSON.parse(raw);
+  return {
+    nextOrderId:1,
+    orders: [],
+    trades: [],
+    positions: {},
+    wallet: {available:100000, hold:0},
+    withdrawals: []
+  };
+}
+function saveState(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+let state = loadState();
+
+// --- UI refs
+const priceEl = document.getElementById('price');
+const spreadEl = document.getElementById('spread');
+const instrumentSel = document.getElementById('instrument');
+const orderTypeSel = document.getElementById('orderType');
+const sideSel = document.getElementById('side');
+const qtyInp = document.getElementById('qty');
+const limitPriceInp = document.getElementById('limitPrice');
+const placeBtn = document.getElementById('placeBtn');
+const ordersTbl = document.querySelector('#ordersTbl tbody');
+const tradesTbl = document.querySelector('#tradesTbl tbody');
+const posTbl = document.querySelector('#posTbl tbody');
+const availableBalEl = document.getElementById('availableBal');
+const holdBalEl = document.getElementById('holdBal');
+const netBalEl = document.getElementById('netBal');
+const seedBtn = document.getElementById('seedBtn');
+const resetBtn = document.getElementById('resetBtn');
+const orderBookTblBody = document.querySelector('#orderBookTbl tbody');
+const requestWithdrawBtn = document.getElementById('requestWithdraw');
+const withdrawAmtInp = document.getElementById('withdrawAmt');
+const withdrawTblBody = document.querySelector('#withdrawTbl tbody');
+const cancelAllBtn = document.getElementById('cancelAll');
+
+// --- simulated orderbook (for market depth display only)
+function buildSimOrderBook(sym, lastPrice){
+  const bids = [], asks = [];
+  for(let i=1;i<=5;i++){
+    bids.push({price: +(lastPrice - i*0.2).toFixed(2), qty: Math.floor(Math.random()*50)+1});
+    asks.push({price: +(lastPrice + i*0.2).toFixed(2), qty: Math.floor(Math.random()*50)+1});
+  }
+  return {bids, asks};
+}
+
+// --- Market simulator: random walk per instr
+const market = {
+  last: {},
+  init(){ for(const k in INSTRUMENTS) this.last[k]=INSTRUMENTS[k].price; },
+  tick(){
+    const sym = instrumentSel.value;
+    let p = this.last[sym];
+    // random small move
+    const delta = (Math.random() - 0.5) * (p * 0.002); // ~0.2% jitter
+    p = Math.max(1, +(p + delta).toFixed(2));
+    this.last[sym] = p;
+    return {symbol:sym, price:p, bid: +(p-0.05).toFixed(2), ask: +(p+0.05).toFixed(2)};
+  }
+};
+
+// --- Order matching logic (simple, immediate)
+function placeOrder({instrument, side, type, qty, price=null}){
+  // validations
+  qty = Math.floor(qty);
+  if(!qty || qty<=0) { alert('Quantity must be positive'); return; }
+  const lastPrice = market.last[instrument];
+  // wallet checks for BUY
+  const notional = (type === 'MARKET') ? lastPrice * qty : price * qty;
+  const fee = Math.max(1, 0.0005 * notional); // tiny simulated fee
+  const totalReq = side === 'BUY' ? (notional + fee) : 0;
+
+  if(side === 'BUY' && state.wallet.available < totalReq){
+    alert('Not enough available balance for this buy order.');
+    return;
+  }
+
+  // create order
+  const order = {
+    id: state.nextOrderId++,
+    instrument, side, type, qty, price: price || null,
+    status: 'OPEN',
+    created_at: new Date().toISOString(),
+    filled_qty: 0
+  };
+
+  // If BUY then put funds on hold
+  if(side === 'BUY'){
+    state.wallet.available -= totalReq;
+    state.wallet.hold += totalReq;
+    // store hold meta in order
+    order.hold_amount = totalReq;
+  }
+
+  state.orders.push(order);
+  saveState();
+  renderAll();
+
+  // Try immediate match
+  attemptMatch(order);
+}
+
+function attemptMatch(order){
+  const lastPrice = market.last[order.instrument];
+  // MARKET orders: fill fully at lastPrice
+  if(order.type === 'MARKET'){
+    executeTrade(order, order.qty, lastPrice);
+    return;
+  }
+  // LIMIT: if BUY limit >= lastPrice then fill; if SELL limit <= lastPrice then fill
+  if(order.type === 'LIMIT'){
+    if(order.side === 'BUY' && order.price >= lastPrice){
+      executeTrade(order, order.qty, order.price);
+      return;
+    }
+    if(order.side === 'SELL' && order.price <= lastPrice){
+      executeTrade(order, order.qty, order.price);
+      return;
+    }
+    // otherwise remain OPEN
+  }
+}
+
+function executeTrade(order, qtyFilled, execPrice){
+  qtyFilled = Math.min(qtyFilled, order.qty - order.filled_qty);
+  const ts = Date.now();
+  // create trade record
+  const trade = {
+    id: 'T' + (state.trades.length+1),
+    order_id: order.id,
+    instrument: order.instrument,
+    side: order.side,
+    qty: qtyFilled,
+    price: execPrice,
+    time: new Date(ts).toLocaleTimeString()
+  };
+  state.trades.unshift(trade);
+
+  // update order
+  order.filled_qty += qtyFilled;
+  if(order.filled_qty >= order.qty) order.status = 'FILLED';
+  else order.status = 'PARTIAL';
+
+  // ledger + positions
+  const notional = execPrice * qtyFilled;
+  const fee = Math.max(1, 0.0005 * notional);
+
+  if(order.side === 'BUY'){
+    // reduce hold (pro-rata) and credit position
+    const holdUsed = Math.min(order.hold_amount || 0, notional + fee);
+    order.hold_amount = (order.hold_amount || 0) - holdUsed;
+    state.wallet.hold -= holdUsed;
+    // any leftover hold (if actual exec price < held) goes back to available on order completion
+    // update position
+    const pKey = order.instrument;
+    if(!state.positions[pKey]) state.positions[pKey] = {qty:0, avg:0};
+    const prev = state.positions[pKey];
+    const totalQty = prev.qty + qtyFilled;
+    const newAvg = (prev.qty * prev.avg + notional + fee) / Math.max(1,totalQty);
+    prev.qty = totalQty;
+    prev.avg = +(newAvg.toFixed(4));
+  } else {
+    // SELL: reduce position, credit available balance minus fee
+    const pKey = order.instrument;
+    const prev = state.positions[pKey] || {qty:0, avg:0};
+    const soldQty = qtyFilled;
+    prev.qty = Math.max(0, prev.qty - soldQty);
+    // credit to available
+    const credit = notional - fee;
+    state.wallet.available += credit;
+  }
+
+  // if order fully filled and had leftover hold, return to available
+  if(order.status === 'FILLED' && order.hold_amount && order.hold_amount > 0){
+    state.wallet.available += order.hold_amount;
+    state.wallet.hold -= order.hold_amount; // although should be zero already
+    order.hold_amount = 0;
+  }
+
+  state.trades = state.trades.slice(0,200); // cap
+  saveState();
+  renderAll();
+}
+
+// On price tick: re-check limit orders for possible fills
+function onPriceTick(sym, price){
+  // update open limit orders
+  for(const ord of state.orders.filter(o=>o.instrument===sym && o.status==='OPEN' && o.type==='LIMIT')){
+    if(ord.side==='BUY' && ord.price >= price) attemptMatch(ord);
+    if(ord.side==='SELL' && ord.price <= price) attemptMatch(ord);
+  }
+  saveState();
+  renderAll();
+}
+
+// Cancel All Open
+function cancelAllOpen(){
+  const opens = state.orders.filter(o=>o.status==='OPEN');
+  for(const o of opens){
+    // release hold if any
+    if(o.hold_amount && o.hold_amount>0){
+      state.wallet.available += o.hold_amount;
+      state.wallet.hold -= o.hold_amount;
+      o.hold_amount = 0;
+    }
+    o.status = 'CANCELLED';
+  }
+  saveState(); renderAll();
+}
+
+// Withdrawal flows
+function requestWithdrawal(amount){
+  amount = Number(amount);
+  if(amount <=0) return alert('Amount > 0');
+  if(amount > state.wallet.available) return alert('Not enough available balance');
+  const req = { id: 'W' + (state.withdrawals.length+1), amt: amount, status:'REQUESTED', created_at: new Date().toISOString() };
+  state.withdrawals.push(req);
+  // reserve amount from available (simulate)
+  state.wallet.available -= amount;
+  state.wallet.hold += amount;
+  saveState(); renderAll();
+}
+
+function adminApproveWithdrawal(id){
+  const req = state.withdrawals.find(r=>r.id===id);
+  if(!req) return;
+  req.status = 'APPROVED';
+  req.processed_at = new Date().toISOString();
+  // on approval remove hold (simulate payout)
+  state.wallet.hold -= req.amt;
+  // payout simulated - do not credit anywhere
+  saveState(); renderAll();
+}
+
+function adminDeclineWithdrawal(id){
+  const req = state.withdrawals.find(r=>r.id===id);
+  if(!req) return;
+  req.status = 'DECLINED';
+  req.processed_at = new Date().toISOString();
+  // return hold to available
+  state.wallet.hold -= req.amt;
+  state.wallet.available += req.amt;
+  saveState(); renderAll();
+}
+
+// --- Rendering functions
+function renderOrders(){
+  ordersTbl.innerHTML = '';
+  for(const o of state.orders.slice().reverse()){
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${o.id}</td><td>${o.instrument}</td><td>${o.side}</td><td>${o.qty}</td><td>${o.price||'MKT'}</td><td>${o.status}${o.filled_qty? ' ('+o.filled_qty+')':''}</td>`;
+    ordersTbl.appendChild(tr);
+  }
+}
+
+function renderTrades(){
+  tradesTbl.innerHTML = '';
+  for(const t of state.trades){
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${t.time}</td><td>${t.instrument}</td><td>${t.side}</td><td>${t.qty}</td><td>${fmt(t.price)}</td>`;
+    tradesTbl.appendChild(tr);
+  }
+}
+
+function renderPositions(){
+  posTbl.innerHTML = '';
+  let netEquity = state.wallet.available + state.wallet.hold;
+  for(const k in state.positions){
+    const p = state.positions[k];
+    // unreal P/L using current market price
+    const cur = market.last[k] || INSTRUMENTS[k].price;
+    const upnl = (cur - p.avg) * p.qty;
+    netEquity += cur * p.qty; // note: net equity counted as cash+hold + position value approximately
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${k}</td><td>${p.qty}</td><td>${fmt(p.avg||0)}</td><td class="${upnl>=0?'green':'red'}">${fmt(upnl||0)}</td>`;
+    posTbl.appendChild(tr);
+  }
+  availableBalEl.textContent = fmt(state.wallet.available);
+  holdBalEl.textContent = fmt(state.wallet.hold);
+  netBalEl.textContent = fmt(state.wallet.available + state.wallet.hold + Object.keys(state.positions).reduce((s,k)=> s + (market.last[k] || INSTRUMENTS[k].price) * (state.positions[k].qty||0), 0));
+}
+
+function renderOrderBook(){
+  const sym = instrumentSel.value;
+  const last = market.last[sym];
+  const ob = buildSimOrderBook(sym, last);
+  orderBookTblBody.innerHTML = '';
+  // show bids first
+  for(const b of ob.bids){
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>BUY</td><td>${fmt(b.price)}</td><td>${b.qty}</td>`;
+    orderBookTblBody.appendChild(tr);
+  }
+  for(const a of ob.asks){
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>SELL</td><td>${fmt(a.price)}</td><td>${a.qty}</td>`;
+    orderBookTblBody.appendChild(tr);
+  }
+}
+
+function renderWithdrawals(){
+  withdrawTblBody.innerHTML = '';
+  for(const w of state.withdrawals.slice().reverse()){
+    const tr = document.createElement('tr');
+    const act = (w.status==='REQUESTED') ? `<button class="btn-approve" onclick="adminApproveWithdrawal('${w.id}')">Approve</button> <button style="margin-left:6px" onclick="adminDeclineWithdrawal('${w.id}')">Decline</button>` : '-';
+    tr.innerHTML = `<td>${w.id}</td><td>${fmt(w.amt)}</td><td>${w.status}</td><td>${act}</td>`;
+    withdrawTblBody.appendChild(tr);
+  }
+}
+
+// overall render
+function renderAll(){
+  const sym = instrumentSel.value;
+  const last = market.last[sym];
+  priceEl.textContent = fmt(last);
+  spreadEl.textContent = `B: ${fmt(last-0.05)} A: ${fmt(last+0.05)}`;
+  renderOrderBook();
+  renderOrders();
+  renderTrades();
+  renderPositions();
+  renderWithdrawals();
+}
+
+// --- UI event wiring
+placeBtn.addEventListener('click', ()=>{
+  const instrument = instrumentSel.value;
+  const type = orderTypeSel.value;
+  const side = sideSel.value;
+  const qty = Number(qtyInp.value);
+  const price = type==='LIMIT' ? Number(limitPriceInp.value) : null;
+  placeOrder({instrument, side, type, qty, price});
+});
+
+seedBtn.addEventListener('click', ()=>{
+  state.wallet.available += 100000;
+  saveState(); renderAll();
+});
+resetBtn.addEventListener('click', ()=>{
+  if(!confirm('Reset demo? This clears local demo state.')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  state = loadState();
+  market.init();
+  saveState();
+  renderAll();
+});
+
+requestWithdrawBtn.addEventListener('click', ()=>{
+  const amt = Number(withdrawAmtInp.value);
+  requestWithdrawal(amt);
+});
+
+cancelAllBtn.addEventListener('click', ()=>{ if(confirm('Cancel all open orders?')) cancelAllOpen(); });
+
+// Expose admin functions to global so buttons in table can call
+window.adminApproveWithdrawal = function(id){ adminApproveWithdrawal(id); }
+window.adminDeclineWithdrawal = function(id){ adminDeclineWithdrawal(id); }
+
+// --- Price ticker loop
+market.init();
+renderAll();
+setInterval(()=>{
+  const sym = instrumentSel.value;
+  const tick = market.tick();
+  onPriceTick(tick.symbol, tick.price);
+  renderAll();
+}, 800);
+
+// also when instrument changes update UI price quickly
+instrumentSel.addEventListener('change', ()=>{ renderAll(); });
+
+// init default limit price to current price
+limitPriceInp.value = INSTRUMENTS[instrumentSel.value].price;
+instrumentSel.addEventListener('change', ()=>{ limitPriceInp.value = market.last[instrumentSel.value] || INSTRUMENTS[instrumentSel.value].price });
+
+// on load ensure state consistency
+saveState()

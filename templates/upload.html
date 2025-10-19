@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Grey Market - Upload KYC</title>
+    <style>
+        body { font-family: Arial; background: #f4f6f8; text-align:center; }
+        form { background: white; padding: 20px; border-radius: 10px; display:inline-block; margin-top:50px; }
+        input { margin: 10px; padding: 8px; border-radius: 5px; border:1px solid #ccc; }
+        button { background:#1976d2; color:white; padding:10px 20px; border:none; border-radius:5px; cursor:pointer; }
+    </style>
+</head>
+<body>
+    <h2>Upload Your KYC Documents</h2>
+    <form method="post" action="/upload" enctype="multipart/form-data">
+        <input type="text" name="name" placeholder="Full Name" required><br>
+        <input type="email" name="email" placeholder="Email" required><br>
+        PAN: <input type="file" name="pan" accept="image/*" required><br>
+        Aadhaar: <input type="file" name="aadhaar" accept="image/*" required><br>
+        Selfie: <input type="file" name="selfie" accept="image/*" required><br>
+        <button type="submit">Submit KYC</button>
+    </form>
+</body>
+</html>
